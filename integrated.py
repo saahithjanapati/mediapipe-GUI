@@ -1,3 +1,17 @@
+# streams webcam with hand detection output to pyQT window
+
+
+
+
+# have the camera frame input (cv2 stuff) in one thread
+#           - this thread constantly writes buffers to a frame
+
+# have the mediapipe detection and gui visualization in another thread
+
+
+
+
+# need to read this: https://stackoverflow.com/questions/52068277/change-frame-rate-in-opencv-3-4-2
 import cv2
 import sys
 from PyQt5.QtWidgets import  QWidget, QLabel, QApplication
@@ -17,35 +31,43 @@ class Thread(QThread):
     changePixmap = pyqtSignal(QImage)
 
     def run(self):
+        cap = cv2.VideoCapture("/Users/saahith/Desktop/mediapipe-GUI/test.mp4")
         cap = cv2.VideoCapture(0)
+
+        cap.set(cv2.CAP_PROP_BUFFERSIZE, 2)
+        i = 0
         while True:
             ret, image = cap.read()
-            with mp_hands.Hands(
-                model_complexity=0,
-                min_detection_confidence=0.5,
-                min_tracking_confidence=0.5) as hands:
+            i += 1
+            print(i)
+            if ret:
+                with mp_hands.Hands(
+                    model_complexity=0,
+                    min_detection_confidence=0.5,
+                    min_tracking_confidence=0.5) as hands:
+                    
+                    # image.flags.writeable = False
+                    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+                    results = hands.process(image)
+                    image.flags.writeable = True
+                    image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+                    if results.multi_hand_landmarks:
+                        for hand_landmarks in results.multi_hand_landmarks:
+                            mp_drawing.draw_landmarks(
+                                image,
+                                hand_landmarks,
+                                mp_hands.HAND_CONNECTIONS,
+                                mp_drawing_styles.get_default_hand_landmarks_style(),
+                                mp_drawing_styles.get_default_hand_connections_style())
+
+                            # https://stackoverflow.com/a/55468544/6622587
                 
-                # image.flags.writeable = False
-                image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-                results = hands.process(image)
-                image.flags.writeable = True
-                image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-                if results.multi_hand_landmarks:
-                    for hand_landmarks in results.multi_hand_landmarks:
-                        mp_drawing.draw_landmarks(
-                            image,
-                            hand_landmarks,
-                            mp_hands.HAND_CONNECTIONS,
-                            mp_drawing_styles.get_default_hand_landmarks_style(),
-                            mp_drawing_styles.get_default_hand_connections_style())
-                if ret:
-                        # https://stackoverflow.com/a/55468544/6622587
-                    rgbImage = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-                    h, w, ch = rgbImage.shape
-                    bytesPerLine = ch * w
-                    convertToQtFormat = QImage(rgbImage.data, w, h, bytesPerLine, QImage.Format_RGB888)
-                    p = convertToQtFormat.scaled(HEIGHT, WIDTH, Qt.KeepAspectRatio)
-                    self.changePixmap.emit(p)
+                rgbImage = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+                h, w, ch = rgbImage.shape
+                bytesPerLine = ch * w
+                convertToQtFormat = QImage(rgbImage.data, w, h, bytesPerLine, QImage.Format_RGB888)
+                p = convertToQtFormat.scaled(HEIGHT, WIDTH, Qt.KeepAspectRatio)
+                self.changePixmap.emit(p)
 
 
 class App(QWidget):
