@@ -1,4 +1,3 @@
-# need to read this: https://stackoverflow.com/questions/52068277/change-frame-rate-in-opencv-3-4-2
 import cv2
 import sys
 from PyQt5.QtCore import * 
