@@ -1,40 +1,13 @@
 # need to read this: https://stackoverflow.com/questions/52068277/change-frame-rate-in-opencv-3-4-2
 import cv2
 import sys
-# from PyQt5.QtCore import * 
-# from PyQt5.QtGui import * 
-
 from PyQt5.QtCore import * 
 from PyQt5.QtGui import * 
 from PyQt5.QtWidgets import * 
-
 import mediapipe as mp
-
 import time
 import threading
-
-mp_drawing = mp.solutions.drawing_utils
-mp_drawing_styles = mp.solutions.drawing_styles
-
-
-mp_hands = mp.solutions.hands
-mp_face_mesh = mp.solutions.face_mesh
-mp_pose = mp.solutions.pose
-
-WIDTH = 640
-HEIGHT = 480
-
-WIDTH = 1000
-HEIGHT = 800
-
-
-#TODO: Get frame reading from mp4 in one thread
-#TODO: Run processing of frames in other thread
-
-hand_detection_toggle = False
-face_mesh_toggle = False
-pose_detection_toggle = False
-
+import argparse
 
 
 class Thread(QThread):
@@ -74,6 +47,7 @@ class Thread(QThread):
         # hand detection
         if hand_detection_toggle:
             with mp_hands.Hands(
+                max_num_hands=1000,
                 model_complexity=0,
                 min_detection_confidence=0.5,
                 min_tracking_confidence=0.5) as hands:
@@ -85,7 +59,7 @@ class Thread(QThread):
             with mp_face_mesh.FaceMesh(
                 static_image_mode=True,
                 refine_landmarks=True,
-                max_num_faces=2,
+                max_num_faces=1000,
                 min_detection_confidence=0.5) as face_mesh:
                 face_mesh_results = face_mesh.process(image)
         
@@ -185,15 +159,16 @@ class Thread(QThread):
 
 
     def run(self):
-        use_webcam = True
-        PATH = "/Users/saahith/Desktop/mediapipe-GUI/test.mp4"
-        if use_webcam:
-            PATH = 0
-        t1 = threading.Thread(target=self.read_frames, args=(PATH,))
-        if use_webcam:
+        global VIDEO_PATH
+        # use_webcam = True
+        # PATH = "/Users/saahith/Desktop/mediapipe-GUI/test.mp4"
+        # if PATH==0:
+        #     PATH = 0
+        t1 = threading.Thread(target=self.read_frames, args=(VIDEO_PATH,))
+        if VIDEO_PATH == 0:
             t2 = threading.Thread(target=self.window_update_webcam, args=())
         else:
-            t2 = threading.Thread(target=self.window_update_prerecorded, args=(PATH,))
+            t2 = threading.Thread(target=self.window_update_prerecorded, args=(VIDEO_PATH,))
 
         # 
 
@@ -209,7 +184,7 @@ class Thread(QThread):
 class App(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.title = 'PyQt5 Video'
+        self.title = 'MediaPipe GUI'
         self.left = 100
         self.top = 100
         self.width = HEIGHT
@@ -226,7 +201,7 @@ class App(QMainWindow):
         self.resize(1800, 1200)
         # create a label
         self.label = QLabel(self)
-        self.label.move(280, 120)
+        self.label.move(325, 120)
 
 
         self.label.resize(WIDTH, HEIGHT)
@@ -237,7 +212,7 @@ class App(QMainWindow):
 
         # Hand detection toggle button
         self.hand_detection_button = QPushButton("Hand Detection", self)
-        self.hand_detection_button.setGeometry(200, 150, 100, 40)
+        self.hand_detection_button.setGeometry(525, 150, 100, 40)
         self.hand_detection_button.setCheckable(True)
         self.hand_detection_button.clicked.connect(self.hand_detection_toggle_switch)
         self.hand_detection_button.setStyleSheet("background-color : lightgrey")
@@ -245,19 +220,17 @@ class App(QMainWindow):
 
         # face mesh toggle
         self.face_mesh_button = QPushButton("Face Mesh", self)
-        self.face_mesh_button.setGeometry(350, 150, 100, 40)
+        self.face_mesh_button.setGeometry(675, 150, 100, 40)
         self.face_mesh_button.setCheckable(True)
         self.face_mesh_button.clicked.connect(self.face_mesh_toggle_switch)
         self.face_mesh_button.setStyleSheet("background-color : lightgrey")
 
         # pose_detection toggle
         self.pose_detection_button = QPushButton("Pose Detection", self)
-        self.pose_detection_button.setGeometry(500, 150, 100, 40)
+        self.pose_detection_button.setGeometry(825, 150, 100, 40)
         self.pose_detection_button.setCheckable(True)
         self.pose_detection_button.clicked.connect(self.pose_detection_toggle_switch)
         self.pose_detection_button.setStyleSheet("background-color : lightgrey")
-
-
 
         self.update()
         self.show()
@@ -288,10 +261,33 @@ class App(QMainWindow):
             self.pose_detection_button.setStyleSheet("background-color : lightgrey")
 
 
-
-
-
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser("Run MediaPipe models on specified video feed")
+    parser.add_argument('video_feed', default='webcam', nargs='?')
+
+
+    mp_drawing = mp.solutions.drawing_utils
+    mp_drawing_styles = mp.solutions.drawing_styles
+
+
+    mp_hands = mp.solutions.hands
+    mp_face_mesh = mp.solutions.face_mesh
+    mp_pose = mp.solutions.pose
+
+
+    WIDTH = 1000
+    HEIGHT = 800
+
+    hand_detection_toggle = False
+    face_mesh_toggle = False
+    pose_detection_toggle = False
+
+
+    VIDEO_PATH = 0
+    args = parser.parse_args()
+    if args.video_feed.lower() != 'webcam':
+        VIDEO_PATH = args.video_feed
+        
     app = QApplication(sys.argv)
     ex = App()
     sys.exit(app.exec_())
