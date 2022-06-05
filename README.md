@@ -1,5 +1,5 @@
 # mediapipe-GUI
-PyQt GUI to display outputs from Google MediaPipe models
+PyQt GUI to display outputs from Google MediaPipe models run on video feeds
 
 ![Screenshot](https://github.com/saahithjanapati/mediapipe-GUI/blob/main/sample.png)
 
